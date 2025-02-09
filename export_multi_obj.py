@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Multi OBJ Export",
     "blender": (4, 3, 2),
-    "category": "Object",
+    "category": "Import-Export",
     "author": "Some1else{}"
 }
 
