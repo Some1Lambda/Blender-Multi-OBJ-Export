@@ -11,6 +11,12 @@ import os
 axes = (('X','X',''),('Y','Y',''),('Z','Z',''))
 
 class MultiOBJProperties(bpy.types.PropertyGroup):
+    object_split: bpy.props.BoolProperty(
+        name="Separate objects",
+        default=True,
+        description="Objects will have different files"
+    )
+    
     scale: bpy.props.FloatProperty(
         name="Output scale",
         default=1.0,
@@ -52,6 +58,7 @@ class MultiOBJ(bpy.types.Operator):
             return {'CANCELLED'}
         
         dir = bpy.path.abspath(context.scene.multiobj_tool.dir)
+        obj_split = context.scene.multiobj_tool.object_split
         scale = context.scene.multiobj_tool.scale
         fwdaxis = context.scene.multiobj_tool.fwd_axis
         upaxis = context.scene.multiobj_tool.up_axis
@@ -64,23 +71,29 @@ class MultiOBJ(bpy.types.Operator):
             os.mkdir(dir)
             
         nexports = 0
+
+        new_obj = {}
         
-        mats = bpy.data.materials
-        for n in range(len(mats)+1):
-            mat = mats[n] if n < len(mats) else None
-            matname = mats[n].name if n < len(mats) else "nomaterial"
-            i = 0
-            for obj in objects:
-                if obj.type == 'MESH' and obj.active_material == mat:
-                    obj.select_set(True)
-                    i += 1
-                    
-            if i > 0:
-                bpy.ops.wm.obj_export(filepath=dir+matname+'.obj',export_materials=False,global_scale=scale,
-                export_selected_objects=True,forward_axis=fwdaxis,up_axis=upaxis,path_mode='ABSOLUTE')
-                nexports += 1
+        for obj in objects:
+            if not obj.visible_get() or obj.type != 'MESH':
+                continue
+            
+            name = (obj.name.split(".")[0]+"_" if obj_split else "")+(obj.active_material.name if obj.active_material != None else "nomaterial")
+            if name in new_obj:
+                new_obj[name].append(obj)
+            else:
+                new_obj[name] = [obj]
+        
+        for name,group in new_obj.items():
+            for obj in group:
+                obj.select_set(True)
+                
+            bpy.ops.wm.obj_export(filepath=dir+name+'.obj',export_materials=False,global_scale=scale,
+            export_selected_objects=True,forward_axis=fwdaxis,up_axis=upaxis,path_mode='ABSOLUTE')
             
             bpy.ops.object.select_all(action='DESELECT')
+            nexports += 1
+        
         
         
         self.report({'INFO'},"Exported "+str(nexports)+" models")
@@ -107,7 +120,9 @@ class MultiOBJTab(bpy.types.Panel):
         
         row = layout.row()
         row.operator(SeparateModel.bl_idname)
+        layout.separator()
         
+        layout.prop(tool,"object_split")
         layout.prop(tool,"scale")
         
         row = layout.row()
