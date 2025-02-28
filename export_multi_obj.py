@@ -84,6 +84,7 @@ class MultiOBJ(bpy.types.Operator):
             else:
                 new_obj[name] = [obj]
         
+        bpy.ops.object.select_all(action='DESELECT')
         for name,group in new_obj.items():
             for obj in group:
                 obj.select_set(True)
